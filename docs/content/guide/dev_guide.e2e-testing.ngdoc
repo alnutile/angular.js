@@ -178,24 +178,48 @@ written in JavaScript needs to come with a strong set of tests. We have built ma
 angular which makes testing your angular applications easy. So there is no excuse for not testing.
 
 
-Some more examples:
+#More examples:
+* checking number of input fields and rows
+* changing val in one input field and checking that it effects another
+* changing select list option and and checking that it effects the one next to it
+* finding the 2nd row in a multi line form and test that row making 
+    sure the previous row does not change
+
 <pre class="prettyprint linenums">
 describe('Quoting System', function() {
-  it('Line Items should updates as hours field changes.', function() {
+  it('Line items should update as hours field changes.', function() {
       expect(repeater('input.line-item-hours').count()).toBe(1);
       expect(element('input.line-item-hours').val()).toBe("0");
       expect(repeater('input.line-item-high').count()).toBe(1);
       expect(element('input.line-item-high').val()).toBe("0");
-      //Now Set hours to effect high
+      
+      //Now Set lineitem.hours to cause a change on input.line-item-high
       input('lineitem.hours').enter('2');
       expect(element('input.line-item-high').val()).toBe("2.8");
+
+      //Change selector to value 4
       select('lineitem.doc').option('4');
       expect(element('input.line-item-high').val()).toBe("2.2");
+      
+      .....
+
+      //In a multi-row form change the 2nd line item
+      // leaving the first as is.
+      // test that the first has not changed.
+      // test that the related field in this row has changed
+      using('tr:nth-of-type(2)', "Second line item").input('lineitem.hours').enter('3');
+      element('input.line-item-hours:eq(1)').val('3');
+      //Verify the change that should happen from the val set above
+      expect(element('input.line-item-high:eq(1)').val()).toBe("4.2");
+      //Change the 2nd rows select list
+      using('tr:nth-of-type(2)', "Second line item").select('lineitem.doc').option('4');
+      expect(element('input.line-item-high:eq(1)').val()).toBe("3.3");
+
   });
 });
 </pre>
 
-Here is the HTML I will be testing
+#Here is the HTML I will be testing
 <pre class="prettyprint linenums">
                   <table class="table">
                     <thead>
