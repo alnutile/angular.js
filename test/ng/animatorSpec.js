@@ -28,20 +28,27 @@ describe("$animator", function() {
       });
     });
 
-    it("should disable and enable the animations", inject(function($animator, $rootScope, $window) {
-      expect($animator.enabled()).toBe(false);
+    it("should disable and enable the animations", function() {
+      var initialState = null;
+      var animator;
 
-      $rootScope.$digest();
-      $window.setTimeout.expect(0).process();
+      angular.bootstrap(body, [function() {
+        return function($animator) {
+          animator = $animator;
+          initialState = $animator.enabled();
+        }
+      }]);
 
-      expect($animator.enabled()).toBe(true);
+      expect(initialState).toBe(false);
 
-      expect($animator.enabled(0)).toBe(false);
-      expect($animator.enabled()).toBe(false);
+      expect(animator.enabled()).toBe(true);
 
-      expect($animator.enabled(1)).toBe(true);
-      expect($animator.enabled()).toBe(true);
-    }));
+      expect(animator.enabled(0)).toBe(false);
+      expect(animator.enabled()).toBe(false);
+
+      expect(animator.enabled(1)).toBe(true);
+      expect(animator.enabled()).toBe(true);
+    });
 
   });
 
@@ -145,9 +152,6 @@ describe("$animator", function() {
         ngAnimate : '{enter: \'custom\'}'
       });
 
-      $rootScope.$digest(); // re-enable the animations;
-      window.setTimeout.expect(0).process();
-
       expect(element.contents().length).toBe(0);
       animator.enter(child, element);
       window.setTimeout.expect(1).process();
@@ -157,9 +161,6 @@ describe("$animator", function() {
       animator = $animator($rootScope, {
         ngAnimate : '{leave: \'custom\'}'
       });
-
-      $rootScope.$digest(); // re-enable the animations;
-      window.setTimeout.expect(0).process();
 
       element.append(child);
       expect(element.contents().length).toBe(1);
@@ -335,10 +336,29 @@ describe("$animator", function() {
     }));
   });
 
-  it("should throw an error when an invalid ng-animate syntax is provided", inject(function($compile, $rootScope) {
+  describe('anmation evaluation', function () {
+    it('should re-evaluate the animation expression on each animation', inject(function($animator, $rootScope) {
+      var parent = jqLite('<div><span></span></div>');
+      var element = parent.find('span');
+
+      $rootScope.animationFn = function () { throw new Error('too early'); };
+      var animate = $animator($rootScope, { ngAnimate: 'animationFn()' });
+      var log = '';
+
+      $rootScope.animationFn = function () { log = 'abc' };
+      animate.enter(element, parent);
+      expect(log).toEqual('abc');
+
+      $rootScope.animationFn = function () { log = 'xyz' };
+      animate.enter(element, parent);
+      expect(log).toEqual('xyz');
+    }));
+  });
+
+  it("should throw an error when an invalid ng-animate syntax is provided", inject(function($animator, $rootScope) {
     expect(function() {
-      element = $compile('<div ng-repeat="i in is" ng-animate=":"></div>')($rootScope);
-      $rootScope.$digest();
+      var animate = $animator($rootScope, { ngAnimate: ':' });
+      animate.enter();
     }).toThrow("Syntax Error: Token ':' not a primary expression at column 1 of the expression [:] starting at [:].");
   }));
 });

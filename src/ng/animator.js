@@ -15,11 +15,13 @@
  *
  * Below is a more detailed breakdown of the supported callback events provided by pre-exisitng ng directives:
  *
- * * {@link ng.directive:ngRepeat#animations ngRepeat} — enter, leave and move
- * * {@link ng.directive:ngView#animations ngView} — enter and leave
- * * {@link ng.directive:ngInclude#animations ngInclude} — enter and leave
- * * {@link ng.directive:ngSwitch#animations ngSwitch} — enter and leave
- * * {@link ng.directive:ngShow#animations ngShow & ngHide} - show and hide respectively
+ * | Directive                                                 | Supported Animations                               |
+ * |========================================================== |====================================================|
+ * | {@link ng.directive:ngRepeat#animations ngRepeat}         | enter, leave and move                              |
+ * | {@link ng.directive:ngView#animations ngView}             | enter and leave                                    |
+ * | {@link ng.directive:ngInclude#animations ngInclude}       | enter and leave                                    |
+ * | {@link ng.directive:ngSwitch#animations ngSwitch}         | enter and leave                                    |
+ * | {@link ng.directive:ngShow#animations ngShow & ngHide}    | show and hide                                      |
  *
  * You can find out more information about animations upon visiting each directive page.
  *
@@ -130,14 +132,6 @@ var $AnimatorProvider = function() {
   this.$get = ['$animation', '$window', '$sniffer', '$rootElement', '$rootScope',
       function($animation, $window, $sniffer, $rootElement, $rootScope) {
     $rootElement.data(NG_ANIMATE_CONTROLLER, rootAnimateController);
-    var unregister = $rootScope.$watch(function() {
-      unregister();
-      if (rootAnimateController.running) {
-        $window.setTimeout(function() {
-          rootAnimateController.running = false;
-        }, 0);
-      }
-    });
 
     /**
      * @ngdoc function
@@ -153,8 +147,6 @@ var $AnimatorProvider = function() {
      * @return {object} the animator object which contains the enter, leave, move, show, hide and animate methods.
      */
      var AnimatorService = function(scope, attrs) {
-        var ngAnimateAttr = attrs.ngAnimate;
-        var ngAnimateValue = ngAnimateAttr && scope.$eval(ngAnimateAttr);
         var animator = {};
   
         /**
@@ -229,24 +221,22 @@ var $AnimatorProvider = function() {
         return animator;
   
         function animateActionFactory(type, beforeFn, afterFn) {
-          var className = ngAnimateAttr
-              ? isObject(ngAnimateValue) ? ngAnimateValue[type] : ngAnimateValue + '-' + type
-              : '';
-          var animationPolyfill = $animation(className);
-  
-          var polyfillSetup = animationPolyfill && animationPolyfill.setup;
-          var polyfillStart = animationPolyfill && animationPolyfill.start;
-  
-          if (!className) {
-            return function(element, parent, after) {
+          return function(element, parent, after) {
+            var ngAnimateValue = scope.$eval(attrs.ngAnimate);
+            var className = ngAnimateValue
+                ? isObject(ngAnimateValue) ? ngAnimateValue[type] : ngAnimateValue + '-' + type
+                : '';
+            var animationPolyfill = $animation(className);
+            var polyfillSetup = animationPolyfill && animationPolyfill.setup;
+            var polyfillStart = animationPolyfill && animationPolyfill.start;
+
+            if (!className) {
               beforeFn(element, parent, after);
               afterFn(element, parent, after);
-            }
-          } else {
-            var setupClass = className + '-setup';
-            var startClass = className + '-start';
-  
-            return function(element, parent, after) {
+            } else {
+              var setupClass = className + '-setup';
+              var startClass = className + '-start';
+
               if (!parent) {
                 parent = after ? after.parent() : element.parent();
               }
@@ -261,44 +251,47 @@ var $AnimatorProvider = function() {
               element.addClass(setupClass);
               beforeFn(element, parent, after);
               if (element.length == 0) return done();
-  
+
               var memento = (polyfillSetup || noop)(element);
-  
+
               // $window.setTimeout(beginAnimation, 0); this was causing the element not to animate
               // keep at 1 for animation dom rerender
               $window.setTimeout(beginAnimation, 1);
-  
-              function beginAnimation() {
-                element.addClass(startClass);
-                if (polyfillStart) {
-                  polyfillStart(element, done, memento);
-                } else if (isFunction($window.getComputedStyle)) {
-                  var vendorTransitionProp = $sniffer.vendorPrefix + 'Transition';
-                  var w3cTransitionProp = 'transition'; //one day all browsers will have this
-  
-                  var durationKey = 'Duration';
-                  var duration = 0;
-                  //we want all the styles defined before and after
-                  forEach(element, function(element) {
+            };
+
+            function beginAnimation() {
+              element.addClass(startClass);
+              if (polyfillStart) {
+                polyfillStart(element, done, memento);
+              } else if (isFunction($window.getComputedStyle)) {
+                var vendorTransitionProp = $sniffer.vendorPrefix + 'Transition';
+                var w3cTransitionProp = 'transition'; //one day all browsers will have this
+
+                var durationKey = 'Duration';
+                var duration = 0;
+
+                //we want all the styles defined before and after
+                forEach(element, function(element) {
+                  if (element.nodeType == 1) {
                     var globalStyles = $window.getComputedStyle(element) || {};
                     duration = Math.max(
                         parseFloat(globalStyles[w3cTransitionProp    + durationKey]) ||
                         parseFloat(globalStyles[vendorTransitionProp + durationKey]) ||
                         0,
                         duration);
-                  });
-                  $window.setTimeout(done, duration * 1000);
-                } else {
-                  done();
-                }
+                  }
+                });
+                $window.setTimeout(done, duration * 1000);
+              } else {
+                done();
               }
-  
-              function done() {
-                afterFn(element, parent, after);
-                element.removeClass(setupClass);
-                element.removeClass(startClass);
-                element.removeData(NG_ANIMATE_CONTROLLER);
-              }
+            }
+
+            function done() {
+              afterFn(element, parent, after);
+              element.removeClass(setupClass);
+              element.removeClass(startClass);
+              element.removeData(NG_ANIMATE_CONTROLLER);
             }
           }
         }
