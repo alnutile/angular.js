@@ -177,6 +177,10 @@ come with almost no-help from the compiler. For this reason we feel very strongl
 written in JavaScript needs to come with a strong set of tests. We have built many features into
 angular which makes testing your angular applications easy. So there is no excuse for not testing.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 78f0259b34287bc047ba2f30c9a55659aa89c330
 #More examples:
 * checking number of input fields and rows
 * changing val in one input field and checking that it effects another
